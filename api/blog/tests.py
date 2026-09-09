@@ -1,6 +1,7 @@
-from django.test import TestCase
 from django.contrib.auth.models import User
-from blog.models import Post, Category
+from django.test import TestCase
+
+from blog.models import Category, Post
 
 
 class Test_Create_Post(TestCase):
@@ -11,12 +12,12 @@ class Test_Create_Post(TestCase):
             username="test_user1", password="123456789"
         )
         test_post = Post.objects.create(
-            category_id=1,
+            category_id=test_category.pk,
             title="Post Title",
             excerpt="Post Excerpt",
             content="Post Content",
             slug="post-title",
-            author_id=1,
+            author_id=test_user.pk,
             status="published",
         )
 
