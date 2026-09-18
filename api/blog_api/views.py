@@ -1,6 +1,5 @@
 from blog.models import Post
-from rest_framework import generics
-from rest_framework import permissions
+from rest_framework import generics, permissions
 
 from .serializers import PostSerializer
 
@@ -18,7 +17,7 @@ class PostUserWritePermission(permissions.BasePermission):
 
 
 class PostList(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly] # noqa: RUF012
     queryset = Post.postobjects.all()
     serializer_class = PostSerializer
 
@@ -26,6 +25,6 @@ class PostList(generics.ListCreateAPIView):
 class PostDetail(
     generics.RetrieveUpdateDestroyAPIView, PostUserWritePermission
 ):
-    permission_classes = [PostUserWritePermission]
+    permission_classes = [PostUserWritePermission]  # noqa: RUF012
     queryset = Post.postobjects.all()
     serializer_class = PostSerializer
