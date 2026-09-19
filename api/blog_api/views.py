@@ -1,5 +1,6 @@
 from blog.models import Post
-from rest_framework import generics, permissions
+from django.shortcuts import get_object_or_404
+from rest_framework import permissions, viewsets
 
 from .serializers import PostSerializer
 
@@ -16,15 +17,11 @@ class PostUserWritePermission(permissions.BasePermission):
         return obj.author == request.user
 
 
-class PostList(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly] # noqa: RUF012
-    queryset = Post.postobjects.all()
-    serializer_class = PostSerializer
-
-
-class PostDetail(
-    generics.RetrieveUpdateDestroyAPIView, PostUserWritePermission
-):
+class PostList(viewsets.ModelViewSet):
     permission_classes = [PostUserWritePermission]  # noqa: RUF012
-    queryset = Post.postobjects.all()
     serializer_class = PostSerializer
+    queryset = Post.objects.all()
+
+    def get_object(self, queryset=None, **kwargs):
+        item = self.kwargs.get("pk")
+        return get_object_or_404(Post, slug=item)
