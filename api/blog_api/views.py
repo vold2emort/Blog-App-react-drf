@@ -1,4 +1,4 @@
-from blog.models import Comment, Post, Vote
+from blog.models import Category, Comment, Post, Vote
 from django.db.models import Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
@@ -8,7 +8,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import CommentSerializer, PostSerializer
+from .serializers import CategorySerializer, CommentSerializer, PostSerializer
 
 
 # custom permission so that only author can write the put/patch/delete post
@@ -43,6 +43,16 @@ def visible_posts(user):
     if not user.is_authenticated:
         return queryset.filter(status="published")
     return queryset.filter(Q(status="published") | Q(author=user))
+
+
+class CategoryListCreateView(ListCreateAPIView):
+    serializer_class = CategorySerializer
+    queryset = Category.objects.all()
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [permissions.IsAuthenticated()]  # noqa: RUF012
+        return [permissions.AllowAny()]  # noqa: RUF012
 
 
 class PostListCreateView(ListCreateAPIView):

@@ -1,10 +1,21 @@
 from django.conf import settings
 from django.db import models
+from django.db.models.functions import Lower
 from django.utils import text, timezone
 
 
 class Category(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(Lower("name"), name="unique_category_name_ci"),
+        ]
+        ordering = ("name",)
+
+    def save(self, *args, **kwargs):
+        self.name = self.name.strip().title()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -87,9 +98,9 @@ class Vote(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=("user", "post"), name="unique_post_vote")
-        ]
+        constraints = (
+            models.UniqueConstraint(fields=("user", "post"), name="unique_post_vote"),
+        )
 
     def __str__(self):
         return f"{self.user} voted {self.value} on {self.post}"

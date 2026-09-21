@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    CategoryListCreateView,
     CommentDetailView,
     CommentListCreateView,
     PostDetailView,
@@ -16,4 +17,8 @@ urlpatterns = [
     path("<slug:slug>/vote/", PostVoteView.as_view(), name="post_vote"),
     path("<slug:slug>/", PostDetailView.as_view(), name="post_detail"),
     path("", PostListCreateView.as_view(), name="post_list"),
+]
+
+category_urlpatterns = [
+    path("", CategoryListCreateView.as_view(), name="category_list"),
 ]

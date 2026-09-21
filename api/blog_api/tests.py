@@ -428,3 +428,69 @@ class VoteApiTest(APITestCase):
         self.assertEqual(results[0]["score"], 2)
         scores = [p["score"] for p in results]
         self.assertEqual(scores, sorted(scores, reverse=True))
+
+
+class CategoryApiTest(APITestCase):
+    def setUp(self):
+        self.user1 = CustomUser.objects.create_user(
+            email="user1@example.com", user_name="user1", password="Sup3rSecret!"
+        )
+        self.category = Category.objects.create(name="django")
+
+    def category_url(self):
+        return reverse("categories:category_list")
+
+    def authorized(self, user):
+        client = APIClient()
+        client.force_authenticate(user=user)
+        return client
+
+    def test_list_categories_ordered_by_name(self):
+        Category.objects.create(name="AI")
+        Category.objects.create(name="backend")
+        response = self.client.get(self.category_url(), format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        names = [c["name"] for c in response.data]
+        self.assertEqual(names, sorted(names))
+
+    def test_create_requires_authentication(self):
+        response = self.client.post(
+            self.category_url(), {"name": "AI"}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_create_normalizes_to_title_case(self):
+        client = self.authorized(self.user1)
+        for raw, expected in (
+            ("programming", "Programming"),
+            ("career-advice", "Career-Advice"),
+            ("  technology  ", "Technology"),
+        ):
+            response = client.post(
+                self.category_url(), {"name": raw}, format="json"
+            )
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            self.assertEqual(response.data["name"], expected)
+
+    def test_duplicate_returns_existing_without_new_row(self):
+        client = self.authorized(self.user1)
+        first = client.post(self.category_url(), {"name": "programming"}, format="json")
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(first.data["name"], "Programming")
+
+        count = Category.objects.count()
+        second = client.post(
+            self.category_url(), {"name": "  PROGRAMMING  "}, format="json"
+        )
+        self.assertEqual(second.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second.data["id"], first.data["id"])
+        self.assertEqual(Category.objects.count(), count)
+
+    def test_duplicate_via_existing_category(self):
+        client = self.authorized(self.user1)
+        response = client.post(
+            self.category_url(), {"name": "Django"}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["id"], self.category.id)
+        self.assertEqual(Category.objects.count(), 1)

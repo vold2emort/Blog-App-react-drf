@@ -1,5 +1,23 @@
-from blog.models import Comment, Post
+from blog.models import Category, Comment, Post
 from rest_framework import serializers
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Category
+        fields = ("id", "name")
+        extra_kwargs = {
+            "name": {"validators": []},
+        }
+
+    def create(self, validated_data):
+        name = validated_data["name"].strip().title()
+        existing = Category.objects.filter(name__iexact=name).first()
+        if existing is not None:
+            return existing
+        return Category.objects.create(name=name)
 
 
 class PostSerializer(serializers.ModelSerializer):
