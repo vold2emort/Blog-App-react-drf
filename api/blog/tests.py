@@ -1,4 +1,4 @@
-from django.contrib.auth.models import User
+from users.models import CustomUser
 from django.test import TestCase
 
 from blog.models import Category, Post
@@ -8,8 +8,8 @@ class Test_Create_Post(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.test_category = Category.objects.create(name="django")
-        cls.test_user = User.objects.create_user(
-            username="test_user1", password="123456789"
+        cls.test_user = CustomUser.objects.create_user(
+            email="test@email.com", password="123456789", user_name="test_user1"
         )
         cls.test_post = Post.objects.create(
             category=cls.test_category,
