@@ -167,3 +167,7 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
 }
+
+# for file upload
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"

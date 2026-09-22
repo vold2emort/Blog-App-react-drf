@@ -29,6 +29,7 @@ class PostSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "title",
+            "thumbnail",
             "slug",
             "excerpt",
             "content",
@@ -39,6 +40,11 @@ class PostSerializer(serializers.ModelSerializer):
             "score",
         )
         read_only_fields = ("slug", "published")
+
+    def validate_thumbnail(self, value):
+        if value is not None and value.size > 5 * 1024 * 1024:
+            raise serializers.ValidationError("Image size must be 5 MB or less.")
+        return value
 
     def create(self, validated_data):
         author = self.context["request"].user

@@ -8,9 +8,9 @@ class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
 
     class Meta:
-        constraints = [
+        constraints = (
             models.UniqueConstraint(Lower("name"), name="unique_category_name_ci"),
-        ]
+        )
         ordering = ("name",)
 
     def save(self, *args, **kwargs):
@@ -38,6 +38,7 @@ class Post(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="posts"
     )
     status = models.CharField(max_length=10, choices=options, default="published")
+    thumbnail = models.ImageField(upload_to="posts/", null=True, blank=True)
 
     objects = models.Manager()
     postobjects = PostObjects()

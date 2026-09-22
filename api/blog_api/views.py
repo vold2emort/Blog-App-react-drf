@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import permissions, status
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -51,13 +52,14 @@ class CategoryListCreateView(ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [permissions.IsAuthenticated()]  # noqa: RUF012
-        return [permissions.AllowAny()]  # noqa: RUF012
+            return [permissions.IsAuthenticated()]
+        return [permissions.AllowAny()]
 
 
 class PostListCreateView(ListCreateAPIView):
     serializer_class = PostSerializer
     pagination_class = PostPagination
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
     permission_classes = [  # noqa: RUF012
         permissions.IsAuthenticatedOrReadOnly,
         PostUserWritePermission,
@@ -150,7 +152,5 @@ class PostVoteView(APIView):
                 vote.value = value
                 vote.save(update_fields=["value"])
 
-        score = post.votes.aggregate(score=Coalesce(Sum("value"), Value(0)))[
-            "score"
-        ]
+        score = post.votes.aggregate(score=Coalesce(Sum("value"), Value(0)))["score"]
         return Response({"score": score})
