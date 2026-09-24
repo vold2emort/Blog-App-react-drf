@@ -38,7 +38,7 @@ class PostPagination(PageNumberPagination):
 
 
 def visible_posts(user):
-    queryset = Post.objects.all().annotate(
+    queryset = Post.objects.all().select_related("author", "category").annotate(
         score=Coalesce(Sum("votes__value"), Value(0))
     )
     if not user.is_authenticated:
