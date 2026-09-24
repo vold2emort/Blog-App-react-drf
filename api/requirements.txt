@@ -3,6 +3,7 @@ attrs==26.1.0
 coverage==7.16.0
 Django==6.1.1
 django-cors-headers==4.9.0
+django-debug-toolbar==8.0.0
 djangorestframework==3.18.0
 djangorestframework_simplejwt==5.5.1
 drf-spectacular==0.30.0

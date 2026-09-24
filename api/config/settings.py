@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "drf_spectacular",
+    "debug_toolbar",
     # created apps
     "users",
     "blog",
@@ -48,6 +49,7 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -171,3 +173,12 @@ SPECTACULAR_SETTINGS = {
 # for file upload
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# STATIC FILES
+STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "static"
+
+# internal IPs for debug_toolbar
+INTERNAL_IPS = [
+    "127.0.0.1",
+]
