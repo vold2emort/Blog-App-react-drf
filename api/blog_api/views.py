@@ -147,9 +147,13 @@ class PostVoteView(APIView):
 
         if not created:
             if vote.value == value:
-                vote.delete()
+                pass
             else:
-                vote.value = value
+                match value:
+                    case 1:
+                        vote.value += 1
+                    case -1:
+                        vote.value -= 1
                 vote.save(update_fields=["value"])
 
         score = post.votes.aggregate(score=Coalesce(Sum("value"), Value(0)))["score"]
