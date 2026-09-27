@@ -9,6 +9,8 @@ __pycache__/
 
 # C extensions
 *.so
+.agents
+skills-lock.json
 
 # Distribution / packaging
 .Python

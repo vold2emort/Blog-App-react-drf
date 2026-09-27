@@ -1,0 +1,45 @@
+@import "tailwindcss";
+@import "./components/ui/8bit/styles/retro.css";
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: #fff;
+  color: #000;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+.retro input,
+.retro textarea,
+.retro select,
+.retro button {
+  background: #fff;
+  color: #000;
+  border: 2px solid #000;
+  border-radius: 0;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.retro button:hover,
+button.retro:hover,
+.retro button:focus-visible,
+button.retro:focus-visible {
+  background: #000;
+  color: #fff;
+  outline: none;
+}
