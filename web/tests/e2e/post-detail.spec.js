@@ -4,7 +4,7 @@ const token = () => `dq${Math.random().toString(36).slice(2, 9)}`;
 
 async function target(api, { status = "published" } = {}) {
   const author = await api.register("author");
-  const category = await api.createCategory(`Det ${token()}`, author.access);
+  const category = await api.createCategory(`Det ${token()}`, author);
   const post = await api.createPost(author, {
     title: `Detail target ${token()}`,
     category: category.id,

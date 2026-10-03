@@ -1,56 +1,57 @@
 import axios from "axios";
 
-const ACCESS_KEY = "blog:access";
-const REFRESH_KEY = "blog:refresh";
-
 export const AUTH_EXPIRED_EVENT = "blog:auth-expired";
 
-export const tokenStore = {
-  get access() {
-    return localStorage.getItem(ACCESS_KEY);
-  },
-  get refresh() {
-    return localStorage.getItem(REFRESH_KEY);
-  },
-  set({ access, refresh }) {
-    if (access) localStorage.setItem(ACCESS_KEY, access);
-    if (refresh) localStorage.setItem(REFRESH_KEY, refresh);
-  },
-  clear() {
-    localStorage.removeItem(ACCESS_KEY);
-    localStorage.removeItem(REFRESH_KEY);
-  },
-};
+export const CSRF_COOKIE = "csrftoken";
+export const CSRF_HEADER = "X-CSRFToken";
 
+const UNSAFE_METHODS = new Set(["post", "put", "patch", "delete"]);
+
+/**
+ * Endpoints that must never trigger the interceptor's refresh-and-retry, or a
+ * failed refresh would recurse. `/user/me/` is here because the provider
+ * bootstraps with an explicit refresh instead.
+ */
 const NO_REFRESH_PATHS = [
+  "/auth/csrf/",
   "/auth/login/",
   "/auth/login/refresh/",
   "/auth/logout/",
   "/user/register/",
+  "/user/me/",
 ];
 
-const api = axios.create({ baseURL: "/api" });
+/**
+ * The CSRF cookie is deliberately not httpOnly so the header can echo it back.
+ * Any valid masking of the secret is accepted, so the raw cookie value works.
+ */
+function readCsrfToken() {
+  const match = document.cookie.match(
+    new RegExp(`(?:^|;\\s*)${CSRF_COOKIE}=([^;]*)`),
+  );
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+const api = axios.create({ baseURL: "/api", withCredentials: true });
 
 api.interceptors.request.use((config) => {
-  const access = tokenStore.access;
-  if (access) {
-    config.headers.Authorization = `Bearer ${access}`;
+  if (UNSAFE_METHODS.has((config.method || "get").toLowerCase())) {
+    const csrf = readCsrfToken();
+    if (csrf) config.headers[CSRF_HEADER] = csrf;
   }
   return config;
 });
 
 let refreshInFlight = null;
 
-async function refreshAccessToken() {
-  const refresh = tokenStore.refresh;
-  refreshInFlight ??= axios
-    .post("/api/auth/login/refresh/", { refresh })
+/** Rotate the token cookies. Concurrent callers share one request. */
+export function refreshSession() {
+  refreshInFlight ??= api
+    .post("/auth/login/refresh/")
     .finally(() => {
       refreshInFlight = null;
     });
-  const { data } = await refreshInFlight;
-  tokenStore.set({ access: data.access, refresh: data.refresh });
-  return data.access;
+  return refreshInFlight;
 }
 
 api.interceptors.response.use(
@@ -61,23 +62,16 @@ api.interceptors.response.use(
       original?.url?.startsWith(path),
     );
 
-    if (
-      error.response?.status !== 401 ||
-      isAuthEndpoint ||
-      !tokenStore.refresh ||
-      original?._retried
-    ) {
+    if (error.response?.status !== 401 || isAuthEndpoint || original?._retried) {
       throw error;
     }
 
     original._retried = true;
 
     try {
-      const access = await refreshAccessToken();
-      original.headers.Authorization = `Bearer ${access}`;
+      await refreshSession();
       return await api(original);
     } catch (refreshError) {
-      tokenStore.clear();
       window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
       throw refreshError;
     }

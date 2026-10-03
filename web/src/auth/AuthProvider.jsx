@@ -1,45 +1,89 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { AUTH_EXPIRED_EVENT, tokenStore } from "@/api/client";
-import { fetchMe, keys, login, logout, register } from "@/api/endpoints";
+import { AUTH_EXPIRED_EVENT } from "@/api/client";
+import {
+  fetchCsrf,
+  fetchMe,
+  keys,
+  login,
+  logout,
+  refreshSession,
+  register,
+} from "@/api/endpoints";
 
 import { AuthContext } from "./auth-context";
 
 export default function AuthProvider({ children }) {
   const queryClient = useQueryClient();
-  const [access, setAccess] = useState(() => tokenStore.access);
+  const [ready, setReady] = useState(false);
+  const [signedOut, setSignedOut] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // The access cookie is httpOnly, so JavaScript cannot tell whether a session
+    // exists. Ask the server to rotate the cookies instead: it either refreshes
+    // an existing session or 401s, which just means anonymous.
+    async function bootstrap() {
+      await fetchCsrf();
+      await refreshSession().catch(() => {});
+      if (!cancelled) setReady(true);
+    }
+
+    bootstrap();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     function onExpired() {
-      setAccess(null);
+      setSignedOut(true);
       queryClient.clear();
     }
     window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
     return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
   }, [queryClient]);
 
-  const { data: user, isPending } = useQuery({
+  /**
+   * The session is disabled rather than deleted on sign-out: clearing the cache
+   * does not reliably reset a mounted observer, so a stale user would otherwise
+   * keep rendering as signed in.
+   */
+  const { data: user } = useQuery({
     queryKey: keys.me,
     queryFn: fetchMe,
-    enabled: Boolean(access),
+    enabled: ready && !signedOut,
     retry: false,
     staleTime: Infinity,
   });
 
+  /**
+   * Fills the cache before re-enabling, so the observer reveals an already
+   * fetched user in the same commit. Awaiting this is what makes navigation
+   * after sign-in safe: callers redirect as soon as signIn resolves, and the
+   * route guards read isAuthenticated.
+   */
+  async function loadMe() {
+    const fresh = await queryClient.fetchQuery({ queryKey: keys.me, queryFn: fetchMe });
+    setSignedOut(false);
+    return fresh;
+  }
+
   async function signIn(credentials) {
     await login(credentials);
-    setAccess(tokenStore.access);
+    await loadMe();
   }
 
   async function signUp(payload) {
     await register(payload);
-    setAccess(tokenStore.access);
+    await loadMe();
   }
 
   async function signOut() {
     await logout();
-    setAccess(null);
+    setSignedOut(true);
     queryClient.clear();
   }
 
@@ -47,8 +91,8 @@ export default function AuthProvider({ children }) {
     <AuthContext
       value={{
         user: user ?? null,
-        isAuthenticated: Boolean(access),
-        isLoading: Boolean(access) && isPending,
+        isAuthenticated: !signedOut && Boolean(user),
+        isLoading: !ready,
         signIn,
         signUp,
         signOut,

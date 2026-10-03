@@ -51,7 +51,7 @@ test.describe("Responsive layout", () => {
 
   test("does not scroll sideways on a post with a long title", async ({ page, api, shot }) => {
     const author = await api.register("long");
-    const category = await api.createCategory(`Long ${token()}`, author.access);
+    const category = await api.createCategory(`Long ${token()}`, author);
     const post = await api.createPost(author, {
       title: `Extremely long unbreakable ${"x".repeat(60)}`,
       category: category.id,

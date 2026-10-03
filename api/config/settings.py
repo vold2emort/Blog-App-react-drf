@@ -142,13 +142,19 @@ AUTH_USER_MODEL = "users.CustomUser"
 
 # allowed cors
 CORS_ALLOWED_ORIGINS = ["http://127.0.0.1:5173", "http://localhost:5173"]
+CORS_ALLOW_CREDENTIALS = True
+
+# The Vite dev proxy rewrites Host to 127.0.0.1:8000, so the browser's Origin
+# (http://localhost:5173) never matches CsrfViewMiddleware's expected origin.
+# These are required for the double-submit check to pass on unsafe requests.
+CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 
 # rest setting
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "users.auth.CookieJWTAuthentication",
     ),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
@@ -160,6 +166,15 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": False,
+}
+
+# Send the token cookies only over HTTPS. Off for local http development; set
+# JWT_COOKIE_SECURE=1 in production. Deliberately not derived from DEBUG, which
+# the test runner forces to False.
+JWT_COOKIE_SECURE = os.getenv("JWT_COOKIE_SECURE", "0").lower() in {
+    "1",
+    "true",
+    "yes",
 }
 
 # swagger view

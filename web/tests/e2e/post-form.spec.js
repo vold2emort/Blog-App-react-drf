@@ -108,7 +108,7 @@ test.describe("Creating a post", () => {
   test("reuses the existing category when the name already exists", async ({ page, api, shot }) => {
     const author = await api.register("author");
     await signIn(page, author);
-    const existing = await api.createCategory(`Dup ${token()}`, author.access);
+    const existing = await api.createCategory(`Dup ${token()}`, author);
     await page.goto("/posts/new");
 
     await page.getByRole("button", { name: "+ New category" }).click();
@@ -125,7 +125,7 @@ test.describe("Creating a post", () => {
 test.describe("Editing a post", () => {
   test("sends a non-owner back to the post", async ({ page, api, shot }) => {
     const owner = await api.register("owner");
-    const category = await api.createCategory(`Edit ${token()}`, owner.access);
+    const category = await api.createCategory(`Edit ${token()}`, owner);
     const post = await api.createPost(owner, {
       title: `Owned ${token()}`,
       category: category.id,
@@ -141,7 +141,7 @@ test.describe("Editing a post", () => {
 
   test("updates the title from the edit form", async ({ page, api, shot }) => {
     const owner = await api.register("owner");
-    const category = await api.createCategory(`Edit ${token()}`, owner.access);
+    const category = await api.createCategory(`Edit ${token()}`, owner);
     const post = await api.createPost(owner, {
       title: `Before ${token()}`,
       category: category.id,

@@ -9,10 +9,11 @@ from drf_spectacular.views import (
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
-from rest_framework_simplejwt.views import (
-    TokenBlacklistView,
-    TokenObtainPairView,
-    TokenRefreshView,
+from users.views import (
+    CookieTokenBlacklistView,
+    CookieTokenObtainPairView,
+    CookieTokenRefreshView,
+    CsrfTokenView,
 )
 
 urlpatterns = [
@@ -26,9 +27,22 @@ urlpatterns = [
         ),
     ),
     path("api/user/", include("users.urls", namespace="users")),
-    path("api/auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("api/auth/login/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
-    path("api/auth/logout/", TokenBlacklistView.as_view(), name="token_logout"),
+    path("api/auth/csrf/", CsrfTokenView.as_view(), name="csrf_token"),
+    path(
+        "api/auth/login/",
+        CookieTokenObtainPairView.as_view(),
+        name="token_obtain_pair",
+    ),
+    path(
+        "api/auth/login/refresh/",
+        CookieTokenRefreshView.as_view(),
+        name="token_refresh",
+    ),
+    path(
+        "api/auth/logout/",
+        CookieTokenBlacklistView.as_view(),
+        name="token_logout",
+    ),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/schema/swagger-ui/",

@@ -1,4 +1,4 @@
-import api, { tokenStore } from "./client";
+import api, { refreshSession } from "./client";
 
 export const keys = {
   posts: (params) => ["posts", params],
@@ -10,24 +10,28 @@ export const keys = {
 
 /* --- auth ----------------------------------------------------------------- */
 
+/** Prime the CSRF cookie so the first write can carry a matching header. */
+export async function fetchCsrf() {
+  await api.get("/auth/csrf/");
+}
+
+export { refreshSession };
+
 export async function login({ email, password }) {
-  const { data } = await api.post("/auth/login/", { email, password });
-  tokenStore.set(data);
-  return data;
+  await api.post("/auth/login/", { email, password });
 }
 
 export async function register(payload) {
   const { data } = await api.post("/user/register/", payload);
-  tokenStore.set(data);
-  return data;
+  return data.user;
 }
 
 export async function logout() {
-  const refresh = tokenStore.refresh;
   try {
-    if (refresh) await api.post("/auth/logout/", { refresh });
-  } finally {
-    tokenStore.clear();
+    await api.post("/auth/logout/");
+  } catch {
+    // The cookies are cleared by the server response; a failed call (expired
+    // session, offline) must not strand the user in a signed-in state.
   }
 }
 

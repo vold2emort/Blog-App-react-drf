@@ -141,8 +141,15 @@ test.describe("Login", () => {
 
     await expect(page).toHaveURL("/");
     await expect(page.getByRole("link", { name: "Log In" }).first()).toBeVisible();
-    const access = await page.evaluate(() => localStorage.getItem("blog:access"));
-    expect(access).toBeNull();
+    const cookies = await page.context().cookies();
+    const names = cookies.map((cookie) => cookie.name);
+    expect(names).not.toContain("access_token");
+    expect(names).not.toContain("refresh_token");
+    const stored = await page.evaluate(() =>
+      Object.keys({ ...window.localStorage }).filter((key) => key.startsWith("blog:")),
+    );
+    expect(stored).not.toContain("blog:access");
+    expect(stored).not.toContain("blog:refresh");
     await shot("auth-logout-success");
   });
 });

@@ -5,7 +5,7 @@ const token = () => `mq${Math.random().toString(36).slice(2, 9)}`;
 test.describe("My posts", () => {
   test("lists only the signed-in author's posts", async ({ page, api, shot }) => {
     const mine = await api.register("mine");
-    const category = await api.createCategory(`Mine ${token()}`, mine.access);
+    const category = await api.createCategory(`Mine ${token()}`, mine);
     const minePrefix = token();
     await api.createPost(mine, { title: `${minePrefix} mine`, category: category.id });
 
@@ -22,7 +22,7 @@ test.describe("My posts", () => {
 
   test("filters between published and drafts", async ({ page, api, shot }) => {
     const author = await api.register("filter");
-    const category = await api.createCategory(`Filter ${token()}`, author.access);
+    const category = await api.createCategory(`Filter ${token()}`, author);
     const prefix = token();
     await api.createPost(author, { title: `${prefix} live`, category: category.id });
     await api.createPost(author, {

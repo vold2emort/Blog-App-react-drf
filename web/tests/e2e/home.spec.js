@@ -3,7 +3,7 @@ import { test, expect, signIn } from "./fixtures";
 const token = () => `zq${Math.random().toString(36).slice(2, 9)}`;
 
 async function seedPosts(api, author, count, titlePrefix) {
-  const category = await api.createCategory(`Cat ${titlePrefix}`, author.access);
+  const category = await api.createCategory(`Cat ${titlePrefix}`, author);
   const posts = [];
   for (let i = 0; i < count; i += 1) {
     posts.push(
@@ -58,8 +58,8 @@ test.describe("Home feed", () => {
   test("filters by category", async ({ page, api, shot }) => {
     const author = await api.register("cat");
     const prefix = token();
-    const wanted = await api.createCategory(`Wanted ${prefix}`, author.access);
-    const other = await api.createCategory(`Other ${prefix}`, author.access);
+    const wanted = await api.createCategory(`Wanted ${prefix}`, author);
+    const other = await api.createCategory(`Other ${prefix}`, author);
     await api.createPost(author, { title: `${prefix} wanted`, category: wanted.id });
     await api.createPost(author, { title: `${prefix} other`, category: other.id });
 

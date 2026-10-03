@@ -4,7 +4,7 @@ const token = () => `cq${Math.random().toString(36).slice(2, 9)}`;
 
 async function target(api) {
   const author = await api.register("author");
-  const category = await api.createCategory(`Cmt ${token()}`, author.access);
+  const category = await api.createCategory(`Cmt ${token()}`, author);
   const post = await api.createPost(author, {
     title: `Comment target ${token()}`,
     category: category.id,
