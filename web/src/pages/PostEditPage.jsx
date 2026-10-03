@@ -26,7 +26,7 @@ export default function PostEditPage() {
     return <ErrorState title="Post not found" onRetry={() => refetch()} />;
   }
 
-  if (user.id !== post.author_id) {
+  if (user?.id !== post.author_id) {
     return <Navigate to={`/posts/${slug}`} replace />;
   }
 
