@@ -472,6 +472,24 @@ class CategoryApiTest(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
             self.assertEqual(response.data["name"], expected)
 
+    def test_create_preserves_capitals_in_the_name(self):
+        client = self.authorized(self.user1)
+        response = client.post(self.category_url(), {"name": "AI Agent"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["name"], "AI Agent")
+
+    def test_duplicate_lookup_ignores_capitals(self):
+        client = self.authorized(self.user1)
+        first = client.post(self.category_url(), {"name": "AI Agent"}, format="json")
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+
+        count = Category.objects.count()
+        again = client.post(self.category_url(), {"name": "ai agent"}, format="json")
+        self.assertEqual(again.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(again.data["id"], first.data["id"])
+        self.assertEqual(again.data["name"], "AI Agent")
+        self.assertEqual(Category.objects.count(), count)
+
     def test_duplicate_returns_existing_without_new_row(self):
         client = self.authorized(self.user1)
         first = client.post(self.category_url(), {"name": "programming"}, format="json")

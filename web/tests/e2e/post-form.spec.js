@@ -92,6 +92,25 @@ test.describe("Creating a post", () => {
     await shot("form-category-created");
   });
 
+  test("keeps capitals in a category name the author typed", async ({ page, api, shot }) => {
+    const author = await api.register("author");
+    await signIn(page, author);
+    await page.goto("/posts/new");
+
+    await page.getByRole("button", { name: "+ New category" }).click();
+    await page.getByLabel("New category").fill(testCategoryName(`AI ${token()}`));
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+
+    await expect(
+      page.getByLabel("Category").locator("option:checked"),
+    ).toHaveText(/^PWTest AI /);
+
+    await page.goto("/categories");
+    // Title-casing the whole name would have rewritten the acronym as "Ai".
+    await expect(page.getByRole("link", { name: /^PWTest AI / })).toBeVisible();
+    await shot("form-category-capitals");
+  });
+
   test("blocks submission and shows field errors", async ({ page, api, shot }) => {
     const author = await api.register("author");
     await signIn(page, author);

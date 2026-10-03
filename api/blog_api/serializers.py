@@ -1,4 +1,4 @@
-from blog.models import Category, Comment, Post
+from blog.models import Category, Comment, Post, normalize_category_name
 from rest_framework import serializers
 
 
@@ -13,7 +13,7 @@ class CategorySerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        name = validated_data["name"].strip().title()
+        name = normalize_category_name(validated_data["name"])
         existing = Category.objects.filter(name__iexact=name).first()
         if existing is not None:
             return existing

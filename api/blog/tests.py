@@ -4,6 +4,36 @@ from django.test import TestCase
 from blog.models import Category, Post
 
 
+class Test_Category_Normalization(TestCase):
+    def test_capitalises_words_that_have_no_capitals(self):
+        for raw, expected in (
+            ("django", "Django"),
+            ("career-advice", "Career-Advice"),
+            ("  technology  ", "Technology"),
+            ("machine   learning", "Machine Learning"),
+            ("web3 basics", "Web3 Basics"),
+        ):
+            with self.subTest(raw=raw):
+                self.assertEqual(Category.objects.create(name=raw).name, expected)
+
+    def test_preserves_capitals_that_were_typed_deliberately(self):
+        for raw, expected in (
+            ("AI Agent", "AI Agent"),
+            ("iOS Tips", "iOS Tips"),
+            ("Django", "Django"),
+            ("CSS basics", "CSS Basics"),
+            ("machine LEARNING", "Machine LEARNING"),
+        ):
+            with self.subTest(raw=raw):
+                self.assertEqual(Category.objects.create(name=raw).name, expected)
+
+    def test_saving_again_does_not_further_change_the_name(self):
+        category = Category.objects.create(name="ai agent")
+        self.assertEqual(category.name, "Ai Agent")
+        category.save()
+        self.assertEqual(category.name, "Ai Agent")
+
+
 class Test_Create_Post(TestCase):
     @classmethod
     def setUpTestData(cls):

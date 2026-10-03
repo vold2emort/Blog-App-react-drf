@@ -1,7 +1,35 @@
+import re
+
 from django.conf import settings
 from django.db import models
 from django.db.models.functions import Lower
 from django.utils import text, timezone
+
+
+def normalize_category_name(name):
+    """
+    Trim, collapse runs of whitespace, then capitalise each run of letters that
+    carries no capitalisation of its own.
+
+    `str.title()` is not usable here. It lower-cases the rest of every word, so
+    "AI Agent" comes back as "Ai Agent" and an acronym does not survive a round
+    trip through the form. A run that already contains a capital is left exactly
+    as typed, which keeps "AI", "iOS" and "CSS" intact while still tidying up
+    "django" and "career-advice".
+    """
+    return _LETTER_RUN.sub(_capitalise_run, " ".join(name.split()))
+
+
+def _capitalise_run(match):
+    run = match.group()
+    if any(character.isupper() for character in run):
+        return run
+    return f"{run[:1].upper()}{run[1:]}"
+
+
+# Letters only, in any script: digits and separators end a run, so "web3" becomes
+# "Web3" and "career-advice" becomes "Career-Advice".
+_LETTER_RUN = re.compile(r"[^\W\d_]+")
 
 
 class Category(models.Model):
@@ -14,7 +42,7 @@ class Category(models.Model):
         ordering = ("name",)
 
     def save(self, *args, **kwargs):
-        self.name = self.name.strip().title()
+        self.name = normalize_category_name(self.name)
         super().save(*args, **kwargs)
 
     def __str__(self):
