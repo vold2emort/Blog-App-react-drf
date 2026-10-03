@@ -11,6 +11,7 @@ __pycache__/
 *.so
 .agents
 skills-lock.json
+.claude
 
 # Distribution / packaging
 .Python
@@ -20,8 +21,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -179,3 +180,5 @@ pyrightconfig.json
 media/
 
 # End of https://www.toptal.com/developers/gitignore/api/python
+# Playwright CLI output (may contain credentials)
+.playwright-cli/

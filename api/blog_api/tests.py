@@ -494,3 +494,168 @@ class CategoryApiTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["id"], self.category.id)
         self.assertEqual(Category.objects.count(), 1)
+
+class PostQueryParamApiTest(APITestCase):
+    def setUp(self):
+        self.tech = Category.objects.create(name="Tech")
+        self.food = Category.objects.create(name="Food")
+        self.user1 = CustomUser.objects.create_user(
+            email="u1@example.com", user_name="user1", password="Sup3rSecret!"
+        )
+        self.user2 = CustomUser.objects.create_user(
+            email="u2@example.com", user_name="user2", password="Sup3rSecret!"
+        )
+        self.post = Post.objects.create(
+            category=self.tech,
+            title="Django patterns",
+            excerpt="about the framework",
+            content="body text",
+            author=self.user1,
+            status="published",
+        )
+        self.other = Post.objects.create(
+            category=self.food,
+            title="Sourdough recipe",
+            content="flour and water",
+            author=self.user2,
+            status="published",
+        )
+        self.draft = Post.objects.create(
+            category=self.tech,
+            title="Unfinished thoughts",
+            content="todo",
+            author=self.user1,
+            status="draft",
+        )
+
+    def post_list_url(self):
+        return reverse("blog_api:post_list")
+
+    def authorized(self, user):
+        client = APIClient()
+        client.force_authenticate(user=user)
+        return client
+
+    def titles(self, response):
+        return {row["title"] for row in response.data["results"]}
+
+    def test_search_matches_title(self):
+        response = self.client.get(
+            self.post_list_url() + "?search=django", format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.titles(response), {"Django patterns"})
+
+    def test_search_matches_content(self):
+        response = self.client.get(
+            self.post_list_url() + "?search=flour", format="json"
+        )
+        self.assertEqual(self.titles(response), {"Sourdough recipe"})
+
+    def test_search_excludes_drafts_from_anonymous(self):
+        response = self.client.get(
+            self.post_list_url() + "?search=unfinished", format="json"
+        )
+        self.assertEqual(self.titles(response), set())
+
+    def test_filter_by_category_id(self):
+        response = self.client.get(
+            f"{self.post_list_url()}?category={self.food.pk}", format="json"
+        )
+        self.assertEqual(self.titles(response), {"Sourdough recipe"})
+
+    def test_filter_by_category_name(self):
+        response = self.client.get(
+            self.post_list_url() + "?category=tech", format="json"
+        )
+        self.assertEqual(self.titles(response), {"Django patterns"})
+
+    def test_mine_returns_only_own_posts(self):
+        client = self.authorized(self.user1)
+        response = client.get(self.post_list_url() + "?mine=true", format="json")
+        self.assertEqual(
+            self.titles(response), {"Django patterns", "Unfinished thoughts"}
+        )
+
+    def test_mine_ignored_for_anonymous(self):
+        response = self.client.get(self.post_list_url() + "?mine=true", format="json")
+        self.assertEqual(self.titles(response), {"Django patterns", "Sourdough recipe"})
+
+    def test_status_filter_narrows_to_drafts(self):
+        client = self.authorized(self.user1)
+        response = client.get(self.post_list_url() + "?status=draft", format="json")
+        self.assertEqual(self.titles(response), {"Unfinished thoughts"})
+
+    def test_list_exposes_author_id_and_comment_count(self):
+        Comment.objects.create(post=self.post, author=self.user2, content="one")
+        Comment.objects.create(post=self.post, author=self.user2, content="two")
+        Comment.objects.create(
+            post=self.post, author=self.user2, content="gone", is_active=False
+        )
+        response = self.client.get(self.post_list_url(), format="json")
+        rows = {row["title"]: row for row in response.data["results"]}
+        self.assertEqual(rows["Django patterns"]["author_id"], self.user1.pk)
+        self.assertEqual(rows["Django patterns"]["comment_count"], 2)
+
+    def test_anonymous_my_vote_is_zero(self):
+        response = self.client.get(self.post_list_url(), format="json")
+        self.assertEqual(response.data["results"][0]["my_vote"], 0)
+
+    def test_my_vote_reflects_existing_vote(self):
+        Vote.objects.create(user=self.user2, post=self.post, value=-1)
+        client = self.authorized(self.user2)
+        response = client.get(self.post_list_url(), format="json")
+        rows = {row["title"]: row for row in response.data["results"]}
+        self.assertEqual(rows["Django patterns"]["my_vote"], -1)
+
+
+class VoteUnvoteApiTest(APITestCase):
+    def setUp(self):
+        self.category = Category.objects.create(name="Tech")
+        self.user1 = CustomUser.objects.create_user(
+            email="u1@example.com", user_name="user1", password="Sup3rSecret!"
+        )
+        self.user2 = CustomUser.objects.create_user(
+            email="u2@example.com", user_name="user2", password="Sup3rSecret!"
+        )
+        self.post = Post.objects.create(
+            category=self.category,
+            title="Post",
+            content="body",
+            author=self.user1,
+            status="published",
+        )
+
+    def vote_url(self, slug=None):
+        return reverse(
+            "blog_api:post_vote", kwargs={"slug": slug or self.post.slug}
+        )
+
+    def authorized(self, user):
+        client = APIClient()
+        client.force_authenticate(user=user)
+        return client
+
+    def test_vote_zero_clears_existing_vote(self):
+        client = self.authorized(self.user2)
+        client.post(self.vote_url(), {"value": 1}, format="json")
+        response = client.post(self.vote_url(), {"value": 0}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["score"], 0)
+        self.assertEqual(response.data["my_vote"], 0)
+        self.assertFalse(Vote.objects.filter(user=self.user2, post=self.post).exists())
+
+    def test_vote_zero_when_no_vote_is_a_noop(self):
+        client = self.authorized(self.user2)
+        response = client.post(self.vote_url(), {"value": 0}, format="json")
+        self.assertEqual(response.data["score"], 0)
+        self.assertEqual(response.data["my_vote"], 0)
+        self.assertEqual(Vote.objects.count(), 0)
+
+    def test_vote_response_reports_my_vote(self):
+        client = self.authorized(self.user2)
+        response = client.post(self.vote_url(), {"value": 1}, format="json")
+        self.assertEqual(response.data["my_vote"], 1)
+        response = client.post(self.vote_url(), {"value": -1}, format="json")
+        self.assertEqual(response.data["my_vote"], -1)
+        self.assertEqual(response.data["score"], -1)

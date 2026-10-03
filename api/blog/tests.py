@@ -36,4 +36,4 @@ class Test_Create_Post(TestCase):
         self.assertEqual(status, "published")
         self.assertEqual(title, "Post Title")
         self.assertEqual(str(post), "Post Title")
-        self.assertEqual(str(category), "django")
+        self.assertEqual(str(category), "Django")

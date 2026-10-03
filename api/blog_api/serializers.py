@@ -22,7 +22,10 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class PostSerializer(serializers.ModelSerializer):
     author = serializers.ReadOnlyField(source="author.user_name")
+    author_id = serializers.IntegerField(read_only=True)
     score = serializers.IntegerField(read_only=True, default=0)
+    my_vote = serializers.IntegerField(read_only=True, default=0)
+    comment_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = Post
@@ -36,8 +39,11 @@ class PostSerializer(serializers.ModelSerializer):
             "status",
             "category",
             "author",
+            "author_id",
             "published",
             "score",
+            "my_vote",
+            "comment_count",
         )
         read_only_fields = ("slug", "published")
 
@@ -53,12 +59,22 @@ class PostSerializer(serializers.ModelSerializer):
 
 class CommentSerializer(serializers.ModelSerializer):
     author = serializers.ReadOnlyField(source="author.user_name")
+    author_id = serializers.IntegerField(read_only=True)
     post = serializers.PrimaryKeyRelatedField(read_only=True)
     content = serializers.CharField(max_length=4000, allow_blank=False)
 
     class Meta:
         model = Comment
-        fields = ("id", "post", "author", "parent", "content", "is_active", "created")
+        fields = (
+            "id",
+            "post",
+            "author",
+            "author_id",
+            "parent",
+            "content",
+            "is_active",
+            "created",
+        )
 
     def validate(self, attrs):
         attrs = super().validate(attrs)

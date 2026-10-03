@@ -1,5 +1,5 @@
 from blog.models import Category, Comment, Post, Vote
-from django.db.models import Q, Sum, Value
+from django.db.models import Count, OuterRef, Q, Subquery, Sum, Value
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
 from rest_framework import permissions, status
@@ -39,11 +39,29 @@ class PostPagination(PageNumberPagination):
 
 def visible_posts(user):
     queryset = Post.objects.all().select_related("author", "category").annotate(
-        score=Coalesce(Sum("votes__value"), Value(0))
+        score=Coalesce(Sum("votes__value"), Value(0)),
+        comment_count=Coalesce(
+            Subquery(
+                Comment.objects.filter(post=OuterRef("pk"), is_active=True)
+                .values("post")
+                .annotate(total=Count("id"))
+                .values("total")
+            ),
+            Value(0),
+        ),
     )
+
     if not user.is_authenticated:
-        return queryset.filter(status="published")
-    return queryset.filter(Q(status="published") | Q(author=user))
+        return queryset.filter(status="published").annotate(my_vote=Value(0))
+
+    return queryset.filter(Q(status="published") | Q(author=user)).annotate(
+        my_vote=Coalesce(
+            Subquery(
+                Vote.objects.filter(post=OuterRef("pk"), user=user).values("value")[:1]
+            ),
+            Value(0),
+        )
+    )
 
 
 class CategoryListCreateView(ListCreateAPIView):
@@ -67,8 +85,31 @@ class PostListCreateView(ListCreateAPIView):
 
     def get_queryset(self):
         queryset = visible_posts(self.request.user)
-        ordering = self.request.query_params.get("ordering")
-        if ordering == "score":
+        params = self.request.query_params
+
+        search = params.get("search", "").strip()
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search)
+                | Q(excerpt__icontains=search)
+                | Q(content__icontains=search)
+            )
+
+        category = params.get("category", "").strip()
+        if category:
+            if category.isdigit():
+                queryset = queryset.filter(category_id=int(category))
+            else:
+                queryset = queryset.filter(category__name__iexact=category)
+
+        if params.get("mine") in ("1", "true", "True") and self.request.user.is_authenticated:
+            queryset = queryset.filter(author=self.request.user)
+
+        status = params.get("status", "").strip()
+        if status in ("draft", "published"):
+            queryset = queryset.filter(status=status)
+
+        if params.get("ordering") == "score":
             return queryset.order_by("-score", "-published")
         return queryset.order_by("-published")
 
@@ -132,29 +173,26 @@ class PostVoteView(APIView):
             value = int(request.data.get("value"))
         except (TypeError, ValueError):
             return Response(
-                {"value": "Must be 1 or -1."}, status=status.HTTP_400_BAD_REQUEST
+                {"value": "Must be 1, 0 or -1."}, status=status.HTTP_400_BAD_REQUEST
             )
-        if value not in (1, -1):
+        if value not in (1, 0, -1):
             return Response(
-                {"value": "Must be 1 or -1."}, status=status.HTTP_400_BAD_REQUEST
+                {"value": "Must be 1, 0 or -1."}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        vote, created = Vote.objects.get_or_create(
-            user=request.user,
-            post=post,
-            defaults={"value": value},
-        )
+        existing = Vote.objects.filter(user=request.user, post=post).first()
 
-        if not created:
-            if vote.value == value:
-                pass
-            else:
-                match value:
-                    case 1:
-                        vote.value += 1
-                    case -1:
-                        vote.value -= 1
-                vote.save(update_fields=["value"])
+        if value == 0 or (existing is not None and existing.value == value):
+            if existing is not None:
+                existing.delete()
+            my_vote = 0
+        elif existing is not None:
+            existing.value = value
+            existing.save(update_fields=["value"])
+            my_vote = value
+        else:
+            Vote.objects.create(user=request.user, post=post, value=value)
+            my_vote = value
 
         score = post.votes.aggregate(score=Coalesce(Sum("value"), Value(0)))["score"]
-        return Response({"score": score})
+        return Response({"score": score, "my_vote": my_vote})

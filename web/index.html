@@ -1,15 +1,23 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
-      rel="stylesheet"
-    />
-    <title>Blog</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>BLOG</title>
+    <script>
+      // Runs before first paint so a dark-theme reload never flashes light.
+      (function () {
+        try {
+          var stored = localStorage.getItem("blog:theme");
+          if (stored === "dark" || stored === "light") {
+            document.documentElement.dataset.theme = stored;
+          }
+        } catch (e) {
+          /* private mode: fall through to the light default */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
