@@ -121,6 +121,9 @@ test.describe("Creating a post", () => {
     await expect(page.locator("#title-error")).toBeVisible();
     await expect(page.locator("#content-error")).toBeVisible();
     await expect(page).toHaveURL("/posts/new");
+    // Errors that appear after submit have to be announced, not just coloured.
+    await expect(page.locator("#title-error")).toHaveAttribute("role", "alert");
+    await expect(page.locator("#content-error")).toHaveAttribute("role", "alert");
     await shot("form-validation-errors");
   });
 

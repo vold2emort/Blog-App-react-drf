@@ -23,7 +23,7 @@ export default function Field({ id, label, error, hint, children, className = ""
         </p>
       )}
       {error && (
-        <p id={errorId} className="mt-2 text-sm text-ink">
+        <p id={errorId} className="mt-2 text-sm text-ink" role="alert">
           <span className="pixel-label">error:</span> {error}
         </p>
       )}

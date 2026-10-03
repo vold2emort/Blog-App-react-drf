@@ -193,7 +193,7 @@ export default function PostForm({ post = null, onSaved }) {
         )}
 
         {errors.content?.message && (
-          <p id="content-error" className="mt-2 text-sm">
+          <p id="content-error" className="mt-2 text-sm" role="alert">
             <span className="pixel-label">error:</span> {errors.content.message}
           </p>
         )}
