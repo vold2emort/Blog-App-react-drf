@@ -2,7 +2,7 @@
 @import "@fontsource/press-start-2p/latin-400.css";
 @import "@fontsource/space-mono/latin-400.css";
 @import "@fontsource/space-mono/latin-700.css";
-@import "./components/ui/8bit/styles/retro.css";
+@import "./components/ui/8bit/styles/retro.css" layer(components);
 
 /*
  * Monochrome tokens.
@@ -14,13 +14,13 @@
 :root {
   color-scheme: light;
   --fg: #000;
-  --bg: #fff;
+  --bg: #dad8d8;
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
   --fg: #fff;
-  --bg: #000;
+  --bg: #0b0b0b;
 }
 
 :root {

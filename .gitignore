@@ -12,6 +12,8 @@ __pycache__/
 .agents
 skills-lock.json
 .claude
+.playwright
+.playwright-cli
 
 # Distribution / packaging
 .Python
