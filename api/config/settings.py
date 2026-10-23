@@ -10,6 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # load .env files from root directory
 load_dotenv(BASE_DIR / ".env")
+# load_dotenv(BASE_DIR / ".env.local", override=True)
 
 
 # Quick-start development settings - unsuitable for production
@@ -39,6 +40,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "drf_spectacular",
     "debug_toolbar",
+    "cloudinary",
     # created apps
     "users",
     "blog",
@@ -92,6 +94,19 @@ DATABASES = {
         'OPTIONS': dict(parse_qsl(tmpPostgres.query)),
     }
 }
+
+# local db
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.environ.get("DB_NAME"),
+#         'USER': os.environ.get("DB_USER"),
+#         'PASSWORD': os.environ.get("DB_PASSWORD"),
+#         'HOST': os.environ.get("DB_HOST"),
+#         'PORT': 5432,
+#         # 'OPTIONS': dict(parse_qsl(tmpPostgres.query)),
+#     }
+# }
 
 
 # Password validation
@@ -151,7 +166,8 @@ MAILERS = {
 AUTH_USER_MODEL = "users.CustomUser"
 
 # allowed cors
-CORS_ALLOWED_ORIGINS = ["http://127.0.0.1:5173", "http://localhost:5173", "http://localhost:4173" ]
+raw_cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in raw_cors_origins.split(",") if origin.strip()]
 CORS_ALLOW_CREDENTIALS = True
 
 # The Vite dev proxy rewrites Host to 127.0.0.1:8000, so the browser's Origin
@@ -196,6 +212,11 @@ SPECTACULAR_SETTINGS = {
 # for file upload
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Cloudinary is configured through the CLOUDINARY_URL environment variable.
+CLOUDINARY = {
+    "secure": True,
+}
 
 
 # internal IPs for debug_toolbar

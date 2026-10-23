@@ -1,5 +1,6 @@
 import re
 
+from cloudinary.models import CloudinaryField
 from django.conf import settings
 from django.db import models
 from django.db.models.functions import Lower
@@ -66,7 +67,12 @@ class Post(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="posts"
     )
     status = models.CharField(max_length=10, choices=options, default="published")
-    thumbnail = models.ImageField(upload_to="posts/", null=True, blank=True)
+    thumbnail = CloudinaryField(
+        "thumbnail",
+        folder="posts",
+        null=True,
+        blank=True,
+    )
 
     objects = models.Manager()
     postobjects = PostObjects()

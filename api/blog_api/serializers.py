@@ -26,6 +26,7 @@ class PostSerializer(serializers.ModelSerializer):
     score = serializers.IntegerField(read_only=True, default=0)
     my_vote = serializers.IntegerField(read_only=True, default=0)
     comment_count = serializers.IntegerField(read_only=True, default=0)
+    thumbnail = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = Post
@@ -48,8 +49,8 @@ class PostSerializer(serializers.ModelSerializer):
         read_only_fields = ("slug", "published")
 
     def validate_thumbnail(self, value):
-        if value is not None and value.size > 5 * 1024 * 1024:
-            raise serializers.ValidationError("Image size must be 5 MB or less.")
+        if value is not None and value.size > 4 * 1024 * 1024:
+            raise serializers.ValidationError("Image size must be 4 MB or less.")
         return value
 
     def create(self, validated_data):
