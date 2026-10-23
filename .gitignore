@@ -14,7 +14,7 @@ skills-lock.json
 .claude
 .playwright
 .playwright-cli
-
+.env.local
 # Distribution / packaging
 .Python
 build/
