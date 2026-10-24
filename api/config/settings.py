@@ -22,7 +22,7 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG")
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -79,21 +79,34 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+# Database from aiven, neon db kinda slow
+import dj_database_url
+
+AIVEN_DATABASE_URL = os.environ.get("AIVEN_DATABASE_URL")
+
+DATABASES = {
+    "default": dj_database_url.config(
+        default=AIVEN_DATABASE_URL,
+        conn_max_age=600,
+        conn_health_checks=True,
+        ssl_require=True,
+    )
+}
 
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
-tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': tmpPostgres.path.replace('/', ''),
-        'USER': tmpPostgres.username,
-        'PASSWORD': tmpPostgres.password,
-        'HOST': tmpPostgres.hostname,
-        'PORT': 5432,
-        'OPTIONS': dict(parse_qsl(tmpPostgres.query)),
-    }
-}
+# tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': tmpPostgres.path.replace('/', ''),
+#         'USER': tmpPostgres.username,
+#         'PASSWORD': tmpPostgres.password,
+#         'HOST': tmpPostgres.hostname,
+#         'PORT': 5432,
+#         'OPTIONS': dict(parse_qsl(tmpPostgres.query)),
+#     }
+# }
 
 # local db
 # DATABASES = {
@@ -105,6 +118,14 @@ DATABASES = {
 #         'HOST': os.environ.get("DB_HOST"),
 #         'PORT': 5432,
 #         # 'OPTIONS': dict(parse_qsl(tmpPostgres.query)),
+#     }
+# }
+
+# local db sqlite, for checking if neon is the cause for long response time
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
 #     }
 # }
 
@@ -167,7 +188,9 @@ AUTH_USER_MODEL = "users.CustomUser"
 
 # allowed cors
 raw_cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
-CORS_ALLOWED_ORIGINS = [origin.strip() for origin in raw_cors_origins.split(",") if origin.strip()]
+CORS_ALLOWED_ORIGINS = [
+    origin.strip() for origin in raw_cors_origins.split(",") if origin.strip()
+]
 CORS_ALLOW_CREDENTIALS = True
 
 # The Vite dev proxy rewrites Host to 127.0.0.1:8000, so the browser's Origin
@@ -223,4 +246,3 @@ CLOUDINARY = {
 INTERNAL_IPS = [
     "127.0.0.1",
 ]
-
