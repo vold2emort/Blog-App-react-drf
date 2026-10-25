@@ -79,6 +79,9 @@ class Post(models.Model):
 
     class Meta:
         ordering = ("-published",)
+        indexes = (
+            models.Index(fields=["status", "-published"], name="post_status_pub_idx"),
+        )
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -115,6 +118,9 @@ class Comment(models.Model):
 
     class Meta:
         ordering = ("created",)
+        indexes = (
+            models.Index(fields=["post", "is_active"], name="comment_post_active_idx"),
+        )
 
     def __str__(self):
         return f"Comment by {self.author} on {self.post}"

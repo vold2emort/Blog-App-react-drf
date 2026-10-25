@@ -2,6 +2,7 @@ from blog.models import Category, Comment, Post, Vote
 from django.db.models import Count, OuterRef, Q, Subquery, Sum, Value
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
+from django.utils.functional import cached_property
 from rest_framework import permissions, status
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.pagination import PageNumberPagination
@@ -39,7 +40,15 @@ class PostPagination(PageNumberPagination):
 
 def visible_posts(user):
     queryset = Post.objects.all().select_related("author", "category").annotate(
-        score=Coalesce(Sum("votes__value"), Value(0)),
+        score=Coalesce(
+            Subquery(
+                Vote.objects.filter(post=OuterRef("pk"))
+                .values("post")
+                .annotate(total=Sum("value"))
+                .values("total")[:1]
+            ),
+            Value(0),
+        ),
         comment_count=Coalesce(
             Subquery(
                 Comment.objects.filter(post=OuterRef("pk"), is_active=True)
@@ -134,18 +143,20 @@ class CommentListCreateView(ListCreateAPIView):
         IsCommentAuthorOrReadOnly,
     ]
 
+    @cached_property
+    def post_instance(self):
+        return get_object_or_404(Post, slug=self.kwargs["slug"])
+
     def get_queryset(self):
-        post = get_object_or_404(Post, slug=self.kwargs["slug"])
-        return Comment.objects.filter(post=post)
+        return Comment.objects.filter(post=self.post_instance).select_related("author")
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context["post"] = get_object_or_404(Post, slug=self.kwargs["slug"])
+        context["post"] = self.post_instance
         return context
 
     def perform_create(self, serializer):
-        post = self.get_serializer_context()["post"]
-        serializer.save(post=post)
+        serializer.save(post=self.post_instance)
 
 
 class CommentDetailView(RetrieveUpdateDestroyAPIView):
@@ -156,7 +167,7 @@ class CommentDetailView(RetrieveUpdateDestroyAPIView):
     ]
 
     def get_queryset(self):
-        return Comment.objects.all()
+        return Comment.objects.select_related("author")
 
     def perform_destroy(self, instance):
         instance.is_active = False
