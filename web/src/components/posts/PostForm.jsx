@@ -281,7 +281,7 @@ export default function PostForm({ post = null, onSaved }) {
           label="Thumbnail"
           type="file"
           accept="image/*"
-          hint={post?.thumbnail ? "Leave empty to keep the current image." : "Optional. Max 5 MB."}
+          hint={post?.thumbnail ? "Leave empty to keep the current image." : "Optional. Max 4 MB."}
           {...register("thumbnail")}
           error={errors.thumbnail?.message}
         />

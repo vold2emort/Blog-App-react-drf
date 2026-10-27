@@ -62,6 +62,9 @@ class CommentSerializer(serializers.ModelSerializer):
     author = serializers.ReadOnlyField(source="author.user_name")
     author_id = serializers.IntegerField(read_only=True)
     post = serializers.PrimaryKeyRelatedField(read_only=True)
+    parent = serializers.IntegerField(
+        source="parent_id", required=False, allow_null=True
+    )
     content = serializers.CharField(max_length=4000, allow_blank=False)
 
     class Meta:
@@ -79,8 +82,13 @@ class CommentSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
-        parent = attrs.get("parent")
-        if parent is not None:
+        parent_id = attrs.get("parent_id")
+        if parent_id is not None:
+            parent = Comment.objects.filter(pk=parent_id).only("post_id").first()
+            if parent is None:
+                raise serializers.ValidationError(
+                    {"parent": "Parent comment does not exist."}
+                )
             post = self.context.get("post")
             if post is not None and parent.post_id != post.id:
                 raise serializers.ValidationError(

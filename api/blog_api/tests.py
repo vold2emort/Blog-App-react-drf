@@ -1,9 +1,11 @@
 from blog.models import Category, Comment, Post, Vote
 from django.urls import reverse
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.test import APIClient, APITestCase
 
 from users.models import CustomUser
+
+from .serializers import CommentSerializer
 
 
 class PostApiTest(APITestCase):
@@ -238,6 +240,45 @@ class CommentApiTest(APITestCase):
             self.comments_url(), {"content": "nice"}, format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_create_reply_returns_parent_id(self):
+        root = Comment.objects.create(
+            post=self.post, author=self.author, content="root"
+        )
+        client = self.authorized(self.user)
+        response = client.post(
+            self.comments_url(), {"content": "reply", "parent": root.pk}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["parent"], root.pk)
+
+    def test_create_comment_with_unknown_parent_rejected(self):
+        client = self.authorized(self.user)
+        response = client.post(
+            self.comments_url(),
+            {"content": "reply", "parent": 999999},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("parent", response.data)
+
+    def test_list_comments_query_count_is_constant_json(self):
+        for i in range(5):
+            Comment.objects.create(
+                post=self.post, author=self.author, content=f"comment {i}"
+            )
+        client = self.authorized(self.user)
+        with self.assertNumQueries(2):
+            response = client.get(
+                self.comments_url(), HTTP_ACCEPT="application/json"
+            )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 5)
+
+    def test_parent_is_plain_integer_field(self):
+        field = CommentSerializer().fields["parent"]
+        self.assertIsInstance(field, serializers.IntegerField)
+        self.assertNotIsInstance(field, serializers.PrimaryKeyRelatedField)
 
     def test_indented_reply_must_belong_to_same_post(self):
         post2 = Post.objects.create(

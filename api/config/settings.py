@@ -20,7 +20,7 @@ if (BASE_DIR / ".env.local").exists():
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = (os.environ.get("DEBUG") == "True")
+DEBUG = os.environ.get("DEBUG") == "True"
 
 ALLOWED_HOSTS = ["*"]
 
@@ -81,30 +81,29 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database from aiven, neon db kinda slow
 
-if DEBUG:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
+# if DEBUG:
+#     DATABASES = {
+#         "default": {
+#             "ENGINE": "django.db.backends.sqlite3",
+#             "NAME": BASE_DIR / "db.sqlite3",
+#         }
+#     }
 
 
-else:
-    import dj_database_url
+# else:
+import dj_database_url
 
-    AIVEN_DATABASE_URL = os.environ.get("AIVEN_DATABASE_URL")
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
-    DATABASES = {
-        "default": dj_database_url.config(
-            default=AIVEN_DATABASE_URL,
-            conn_max_age=600,
-            conn_health_checks=True,
-            ssl_require=True,
-        )
-    }
+DATABASES = {
+    "default": dj_database_url.config(
+        default=DATABASE_URL,
+        conn_max_age=600,
+        conn_health_checks=True,
+        ssl_require=True,
+    )
+}
 
-# Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 # tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
 # DATABASES = {

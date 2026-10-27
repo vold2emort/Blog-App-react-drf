@@ -98,8 +98,8 @@ export default function VoteButtons({ post, size = "sm", showCount = true }) {
         onClick={() => cast(1)}
         aria-pressed={post.my_vote === 1}
         aria-label="Upvote"
-        title={title ?? "Upvote"}
-        disabled={disabled}
+        title={title ?? (post.my_vote === 1 ? "Remove upvote" : "Upvote")}
+        disabled={disabled || (post.my_vote === -1 && !isDraft)}
       >
         <ChevronUp size={16} aria-hidden="true" />
       </Button>
@@ -120,8 +120,8 @@ export default function VoteButtons({ post, size = "sm", showCount = true }) {
         onClick={() => cast(-1)}
         aria-pressed={post.my_vote === -1}
         aria-label="Downvote"
-        title={title ?? "Downvote"}
-        disabled={disabled}
+        title={title ?? (post.my_vote === -1 ? "Remove downvote" : "Downvote")}
+        disabled={disabled || (post.my_vote === 1 && !isDraft)}
       >
         <ChevronDown size={16} aria-hidden="true" />
       </Button>

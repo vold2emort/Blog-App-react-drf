@@ -191,19 +191,47 @@ class PostVoteView(APIView):
                 {"value": "Must be 1, 0 or -1."}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        existing = Vote.objects.filter(user=request.user, post=post).first()
+        from django.db import IntegrityError, transaction
 
-        if value == 0 or (existing is not None and existing.value == value):
-            if existing is not None:
-                existing.delete()
-            my_vote = 0
-        elif existing is not None:
-            existing.value = value
-            existing.save(update_fields=["value"])
-            my_vote = value
-        else:
-            Vote.objects.create(user=request.user, post=post, value=value)
-            my_vote = value
+        with transaction.atomic():
+            existing = (
+                Vote.objects.select_for_update()
+                .filter(user=request.user, post=post)
+                .first()
+            )
+
+            if value == 0:
+                if existing is not None:
+                    existing.delete()
+                my_vote = 0
+            elif existing is not None:
+                if existing.value == value:
+                    existing.delete()
+                    my_vote = 0
+                else:
+                    existing.value = value
+                    existing.save(update_fields=["value"])
+                    my_vote = value
+            else:
+                try:
+                    Vote.objects.create(user=request.user, post=post, value=value)
+                except IntegrityError:
+                    existing = (
+                        Vote.objects.select_for_update()
+                        .filter(user=request.user, post=post)
+                        .first()
+                    )
+                    if existing is None:
+                        raise
+                    if existing.value == value:
+                        existing.delete()
+                        my_vote = 0
+                    else:
+                        existing.value = value
+                        existing.save(update_fields=["value"])
+                        my_vote = value
+                else:
+                    my_vote = value
 
         score = post.votes.aggregate(score=Coalesce(Sum("value"), Value(0)))["score"]
         return Response({"score": score, "my_vote": my_vote})

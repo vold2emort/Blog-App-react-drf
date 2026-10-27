@@ -123,7 +123,7 @@ class Comment(models.Model):
         )
 
     def __str__(self):
-        return f"Comment by {self.author} on {self.post}"
+        return f"Comment {self.pk} by user {self.author_id} on post {self.post_id}"
 
 
 class Vote(models.Model):
