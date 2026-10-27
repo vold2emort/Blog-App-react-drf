@@ -208,7 +208,9 @@ CORS_ALLOW_CREDENTIALS = True
 # The Vite dev proxy rewrites Host to 127.0.0.1:8000, so the browser's Origin
 # (http://localhost:5173) never matches CsrfViewMiddleware's expected origin.
 # These are required for the double-submit check to pass on unsafe requests.
-CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
+CSRF_TRUSTED_ORIGINS = list(
+    dict.fromkeys(CORS_ALLOWED_ORIGINS + ["http://localhost:5173", "http://127.0.0.1:5173"])
+)
 
 # rest setting
 

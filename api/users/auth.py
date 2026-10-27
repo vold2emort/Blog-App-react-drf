@@ -45,10 +45,12 @@ def cookie_secure():
 
 def set_auth_cookies(response, access, refresh=None):
     """Attach the token cookies to ``response``."""
+    secure = cookie_secure()
+    samesite = "None" if secure else "Lax"
     common = {
         "httponly": True,
-        "secure": cookie_secure(),
-        "samesite": "Lax",
+        "secure": secure,
+        "samesite": samesite,
         "path": "/",
     }
     response.set_cookie(
@@ -67,8 +69,10 @@ def set_auth_cookies(response, access, refresh=None):
 
 
 def clear_auth_cookies(response):
+    secure = cookie_secure()
+    samesite = "None" if secure else "Lax"
     for name in (ACCESS_COOKIE, REFRESH_COOKIE):
-        response.delete_cookie(name, path="/", samesite="Lax")
+        response.delete_cookie(name, path="/", samesite=samesite)
 
 
 class CookieJWTAuthentication(JWTAuthentication):

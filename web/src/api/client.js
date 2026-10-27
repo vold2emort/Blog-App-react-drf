@@ -32,7 +32,10 @@ function readCsrfToken() {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-const api = axios.create({ baseURL: "/api", withCredentials: true });
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || "/api",
+  withCredentials: true,
+});
 
 api.interceptors.request.use((config) => {
   if (UNSAFE_METHODS.has((config.method || "get").toLowerCase())) {
