@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageSquare, PenSquare, Trash2 } from "lucide-react";
+import { Maximize2, MessageSquare, PenSquare, Trash2, X } from "lucide-react";
 
 import { deletePost, fetchComments, fetchPost, keys } from "@/api/endpoints";
 import Button from "@/components/ui/8bit/Button";
@@ -21,6 +21,25 @@ export default function PostDetailPage() {
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [isImageOpen, setIsImageOpen] = useState(false);
+
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setIsImageOpen(false);
+      }
+    }
+
+    if (isImageOpen) {
+      document.body.style.overflow = "hidden";
+      window.addEventListener("keydown", handleKeyDown);
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isImageOpen]);
 
   const postQuery = useQuery({
     queryKey: keys.post(slug),
@@ -127,11 +146,50 @@ export default function PostDetailPage() {
       </header>
 
       {post.thumbnail && (
-        <img
-          src={post.thumbnail}
-          alt=""
-          className="thumb w-full object-cover max-h-96"
-        />
+        <div className="relative w-full">
+          <img
+            src={post.thumbnail}
+            alt={post.title}
+            className="thumb w-full object-contain max-h-96"
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="absolute top-2 right-2 bg-black/40 hover:bg-black/60 text-white"
+            onClick={() => setIsImageOpen(true)}
+            aria-label="View full image"
+            title="View full image"
+          >
+            <Maximize2 size={14} aria-hidden="true" />
+          </Button>
+        </div>
+      )}
+
+      {isImageOpen && post.thumbnail && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Full size image"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setIsImageOpen(false)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white hover:opacity-80"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsImageOpen(false);
+            }}
+            aria-label="Close full image"
+          >
+            <X size={24} aria-hidden="true" />
+          </button>
+          <img
+            src={post.thumbnail}
+            alt={post.title}
+            className="max-h-full max-w-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
       )}
 
       {confirmingDelete && (

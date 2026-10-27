@@ -35,7 +35,7 @@ export default function Header() {
             className="pixel-title text-base sm:text-lg shrink-0"
             onClick={() => setMenuOpen(false)}
           >
-            BLOG
+            B-LOG
           </Link>
 
           <nav className="hidden md:flex items-center gap-1" aria-label="Primary">
