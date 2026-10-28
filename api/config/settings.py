@@ -219,16 +219,6 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": False,
 }
-
-# Send the token cookies only over HTTPS. Off for local http development; set
-# JWT_COOKIE_SECURE=1 in production. Deliberately not derived from DEBUG, which
-# the test runner forces to False.
-JWT_COOKIE_SECURE = os.getenv("JWT_COOKIE_SECURE", "0").lower() in {
-    "1",
-    "true",
-    "yes",
-}
-
 # swagger view
 SPECTACULAR_SETTINGS = {
     "TITLE": "Blog API",
