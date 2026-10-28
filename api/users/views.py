@@ -1,4 +1,3 @@
-from django.middleware.csrf import get_token
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -12,11 +11,9 @@ from rest_framework_simplejwt.views import (
 )
 
 from .auth import (
-    CSRF_COOKIE,
     REFRESH_COOKIE,
-    clear_auth_cookies,
-    enforce_csrf,
-    set_auth_cookies,
+    clear_refresh_cookie,
+    set_refresh_cookie,
 )
 from .serializers import RegisterUserSerializer, UserSerializer
 
@@ -30,41 +27,39 @@ class CustomUserRegisterView(APIView):
             new_user = serializer.save()
             refresh = RefreshToken.for_user(new_user)
             response = Response(
-                {"user": UserSerializer(new_user).data},
+                {
+                    "user": UserSerializer(new_user).data,
+                    "access": str(refresh.access_token),
+                },
                 status=status.HTTP_201_CREATED,
             )
-            set_auth_cookies(response, refresh.access_token, refresh)
+            set_refresh_cookie(response, refresh)
             return response
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CookieTokenObtainPairView(TokenObtainPairView):
-    """Exchange credentials for cookies."""
+    """Exchange credentials for access token in body and refresh token in httpOnly cookie."""
+
+    permission_classes = (AllowAny,)
 
     def post(self, request, *args, **kwargs):
-        enforce_csrf(request)
         response = super().post(request, *args, **kwargs)
         if response.status_code == status.HTTP_200_OK:
-            set_auth_cookies(
-                response,
-                response.data["access"],
-                response.data.get("refresh"),
-            )
-            response.data = {}
+            refresh = response.data.get("refresh")
+            access = response.data.get("access")
+            set_refresh_cookie(response, refresh)
+            response.data = {"access": access} if access else {}
         return response
 
 
 class CookieTokenRefreshView(TokenRefreshView):
-    """Rotate the token cookies.
+    """Get new access token using refresh token from httpOnly cookie."""
 
-    ``ROTATE_REFRESH_TOKENS`` and ``BLACKLIST_AFTER_ROTATION`` are both on, so
-    the rotated refresh token has to be written back or the next refresh would
-    present a blacklisted token.
-    """
+    permission_classes = (AllowAny,)
 
     def post(self, request, *args, **kwargs):
-        enforce_csrf(request)
         if not request.COOKIES.get(REFRESH_COOKIE):
             return Response(
                 {"detail": "Refresh token is missing."},
@@ -72,12 +67,11 @@ class CookieTokenRefreshView(TokenRefreshView):
             )
         response = super().post(request, *args, **kwargs)
         if response.status_code == status.HTTP_200_OK:
-            set_auth_cookies(
-                response,
-                response.data["access"],
-                response.data.get("refresh"),
-            )
-            response.data = {}
+            refresh = response.data.get("refresh")
+            access = response.data.get("access")
+            if refresh is not None:
+                set_refresh_cookie(response, refresh)
+            response.data = {"access": access} if access else {}
         return response
 
     def get_serializer(self, *args, **kwargs):
@@ -87,10 +81,11 @@ class CookieTokenRefreshView(TokenRefreshView):
 
 
 class CookieTokenBlacklistView(TokenBlacklistView):
-    """Blacklist the refresh token and expire both cookies."""
+    """Blacklist the refresh token and expire the cookie."""
+
+    permission_classes = (AllowAny,)
 
     def post(self, request, *args, **kwargs):
-        enforce_csrf(request)
         raw = request.COOKIES.get(REFRESH_COOKIE)
         if raw:
             try:
@@ -98,18 +93,8 @@ class CookieTokenBlacklistView(TokenBlacklistView):
             except TokenError:
                 pass
         response = Response(status=status.HTTP_204_NO_CONTENT)
-        clear_auth_cookies(response)
+        clear_refresh_cookie(response)
         return response
-
-
-class CsrfTokenView(APIView):
-    """Hand the SPA the CSRF token it must echo back in a header."""
-
-    authentication_classes = ()
-    permission_classes = (AllowAny,)
-
-    def get(self, request):
-        return Response({CSRF_COOKIE: get_token(request)})
 
 
 class CurrentUserView(APIView):

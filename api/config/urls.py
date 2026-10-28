@@ -13,7 +13,6 @@ from users.views import (
     CookieTokenBlacklistView,
     CookieTokenObtainPairView,
     CookieTokenRefreshView,
-    CsrfTokenView,
 )
 
 urlpatterns = [
@@ -26,7 +25,6 @@ urlpatterns = [
         ),
     ),
     path("api/user/", include("users.urls", namespace="users")),
-    path("api/auth/csrf/", CsrfTokenView.as_view(), name="csrf_token"),
     path(
         "api/auth/login/",
         CookieTokenObtainPairView.as_view(),
@@ -48,16 +46,15 @@ urlpatterns = [
         SpectacularSwaggerView.as_view(url_name="schema"),
         name="swagger-ui",
     ),
-    # Path to load ReDoc (Alternative clean UI)
     path(
         "api/schema/redoc/",
         SpectacularRedocView.as_view(url_name="schema"),
         name="redoc",
     ),
-] 
+]
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-    urlpatterns += [ path("silk/", include("silk.urls", namespace="silk")) ]
+    urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
     urlpatterns += debug_toolbar_urls()

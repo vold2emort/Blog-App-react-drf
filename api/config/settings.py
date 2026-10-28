@@ -23,8 +23,6 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 DEBUG = os.environ.get("DEBUG") == "True"
 
 ALLOWED_HOSTS = ["*"]
-
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -55,7 +53,7 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "debug_toolbar.middleware.DebugToolbarMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
+#    "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -83,28 +81,28 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database from aiven, neon db kinda slow
 
-# if DEBUG:
-#     DATABASES = {
-#         "default": {
-#             "ENGINE": "django.db.backends.sqlite3",
-#             "NAME": BASE_DIR / "db.sqlite3",
-#         }
-#     }
+if DEBUG:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
-# else:
-import dj_database_url
+else:
+    import dj_database_url
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+    DATABASE_URL = os.environ.get("DATABASE_URL")
 
-DATABASES = {
-    "default": dj_database_url.config(
-        default=DATABASE_URL,
-        conn_max_age=600,
-        conn_health_checks=True,
-        ssl_require=True,
-    )
-}
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=True,
+        )
+    }
 
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 # tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
@@ -205,18 +203,11 @@ CORS_ALLOWED_ORIGINS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
-# The Vite dev proxy rewrites Host to 127.0.0.1:8000, so the browser's Origin
-# (http://localhost:5173) never matches CsrfViewMiddleware's expected origin.
-# These are required for the double-submit check to pass on unsafe requests.
-CSRF_TRUSTED_ORIGINS = list(
-    dict.fromkeys(CORS_ALLOWED_ORIGINS + ["http://localhost:5173", "http://127.0.0.1:5173"])
-)
-
 # rest setting
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
-    "DEFAULT_AUTHENTICATION_CLASSES": ("users.auth.CookieJWTAuthentication",),
+    "DEFAULT_AUTHENTICATION_CLASSES": ("users.auth.AccessTokenAuthentication",),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
@@ -260,6 +251,3 @@ CLOUDINARY = {
 INTERNAL_IPS = [
     "127.0.0.1",
 ]
-
-CSRF_COOKIE_SECURE = True
-CSRF_COOKIE_SAMESITE = "None"
