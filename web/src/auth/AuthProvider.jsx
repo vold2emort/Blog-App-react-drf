@@ -1,9 +1,17 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { AUTH_EXPIRED_EVENT } from "@/api/client";
 import {
-  fetchCsrf,
+  AUTH_EXPIRED_EVENT,
+  clearAccessToken,
+  clearCachedUser,
+  clearHasSession,
+  getAccessToken,
+  getCachedUser,
+  getHasSession,
+  setCachedUser,
+} from "@/api/client";
+import {
   fetchMe,
   keys,
   login,
@@ -22,12 +30,16 @@ export default function AuthProvider({ children }) {
   useEffect(() => {
     let cancelled = false;
 
-    // The access cookie is httpOnly, so JavaScript cannot tell whether a session
-    // exists. Ask the server to rotate the cookies instead: it either refreshes
-    // an existing session or 401s, which just means anonymous.
     async function bootstrap() {
-      await fetchCsrf();
-      await refreshSession().catch(() => {});
+      if (getHasSession()) {
+        try {
+          await refreshSession();
+        } catch {
+          clearAccessToken();
+          clearHasSession();
+          clearCachedUser();
+        }
+      }
       if (!cancelled) setReady(true);
     }
 
@@ -39,6 +51,9 @@ export default function AuthProvider({ children }) {
 
   useEffect(() => {
     function onExpired() {
+      clearAccessToken();
+      clearHasSession();
+      clearCachedUser();
       setSignedOut(true);
       queryClient.clear();
     }
@@ -46,27 +61,24 @@ export default function AuthProvider({ children }) {
     return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
   }, [queryClient]);
 
-  /**
-   * The session is disabled rather than deleted on sign-out: clearing the cache
-   * does not reliably reset a mounted observer, so a stale user would otherwise
-   * keep rendering as signed in.
-   */
+  const cachedUser = ready && !signedOut && getHasSession() ? getCachedUser() : null;
+
   const { data: user } = useQuery({
     queryKey: keys.me,
     queryFn: fetchMe,
-    enabled: ready && !signedOut,
+    enabled: ready && !signedOut && !!getAccessToken() && !getHasSession(),
     retry: false,
     staleTime: Infinity,
+    initialData: cachedUser || undefined,
   });
 
-  /**
-   * Fills the cache before re-enabling, so the observer reveals an already
-   * fetched user in the same commit. Awaiting this is what makes navigation
-   * after sign-in safe: callers redirect as soon as signIn resolves, and the
-   * route guards read isAuthenticated.
-   */
   async function loadMe() {
-    const fresh = await queryClient.fetchQuery({ queryKey: keys.me, queryFn: fetchMe });
+    clearCachedUser();
+    const fresh = await queryClient.fetchQuery({
+      queryKey: keys.me,
+      queryFn: fetchMe,
+    });
+    setCachedUser(fresh);
     setSignedOut(false);
     return fresh;
   }
@@ -87,11 +99,14 @@ export default function AuthProvider({ children }) {
     queryClient.clear();
   }
 
+  const resolvedUser =
+    user ?? (ready && !signedOut && getHasSession() ? getCachedUser() : null);
+
   return (
     <AuthContext
       value={{
-        user: user ?? null,
-        isAuthenticated: !signedOut && Boolean(user),
+        user: resolvedUser ?? null,
+        isAuthenticated: !signedOut && Boolean(resolvedUser),
         isLoading: !ready,
         signIn,
         signUp,

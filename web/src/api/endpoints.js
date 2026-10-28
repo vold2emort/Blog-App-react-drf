@@ -1,4 +1,12 @@
-import api, { refreshSession } from "./client";
+import api, {
+  refreshSession,
+  setAccessToken,
+  clearAccessToken,
+  setHasSession,
+  clearHasSession,
+  setCachedUser,
+  clearCachedUser,
+} from "./client";
 
 export const keys = {
   posts: (params) => ["posts", params],
@@ -10,19 +18,25 @@ export const keys = {
 
 /* --- auth ----------------------------------------------------------------- */
 
-/** Prime the CSRF cookie so the first write can carry a matching header. */
-export async function fetchCsrf() {
-  await api.get("/auth/csrf/");
-}
-
 export { refreshSession };
 
 export async function login({ email, password }) {
-  await api.post("/auth/login/", { email, password });
+  const { data } = await api.post("/auth/login/", { email, password });
+  if (data?.access) {
+    setAccessToken(data.access);
+  }
+  setHasSession();
+  clearCachedUser();
+  return data;
 }
 
 export async function register(payload) {
   const { data } = await api.post("/user/register/", payload);
+  if (data?.access) {
+    setAccessToken(data.access);
+  }
+  setHasSession();
+  clearCachedUser();
   return data.user;
 }
 
@@ -30,13 +44,17 @@ export async function logout() {
   try {
     await api.post("/auth/logout/");
   } catch {
-    // The cookies are cleared by the server response; a failed call (expired
-    // session, offline) must not strand the user in a signed-in state.
+    // ignore
+  } finally {
+    clearAccessToken();
+    clearHasSession();
+    clearCachedUser();
   }
 }
 
 export async function fetchMe() {
   const { data } = await api.get("/user/me/");
+  setCachedUser(data);
   return data;
 }
 

@@ -2,34 +2,87 @@ import axios from "axios";
 
 export const AUTH_EXPIRED_EVENT = "blog:auth-expired";
 
-export const CSRF_COOKIE = "csrftoken";
-export const CSRF_HEADER = "X-CSRFToken";
-
 const UNSAFE_METHODS = new Set(["post", "put", "patch", "delete"]);
 
 /**
- * Endpoints that must never trigger the interceptor's refresh-and-retry, or a
- * failed refresh would recurse. `/user/me/` is here because the provider
- * bootstraps with an explicit refresh instead.
+ * Endpoints that must never trigger the interceptor's refresh-and-retry.
  */
 const NO_REFRESH_PATHS = [
-  "/auth/csrf/",
   "/auth/login/",
   "/auth/login/refresh/",
   "/auth/logout/",
   "/user/register/",
-  "/user/me/",
 ];
 
-/**
- * The CSRF cookie is deliberately not httpOnly so the header can echo it back.
- * Any valid masking of the secret is accepted, so the raw cookie value works.
- */
-function readCsrfToken() {
-  const match = document.cookie.match(
-    new RegExp(`(?:^|;\\s*)${CSRF_COOKIE}=([^;]*)`),
-  );
-  return match ? decodeURIComponent(match[1]) : null;
+let accessToken = null;
+
+const HAS_SESSION_KEY = "blog:hasSession";
+const USER_KEY = "blog:user";
+
+export function getAccessToken() {
+  return accessToken;
+}
+
+export function setAccessToken(token) {
+  accessToken = token || null;
+}
+
+export function clearAccessToken() {
+  accessToken = null;
+}
+
+export function getHasSession() {
+  try {
+    return localStorage.getItem(HAS_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setHasSession() {
+  try {
+    localStorage.setItem(HAS_SESSION_KEY, "1");
+  } catch {
+    // ignore
+  }
+}
+
+export function clearHasSession() {
+  try {
+    localStorage.removeItem(HAS_SESSION_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+export function getCachedUser() {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function setCachedUser(user) {
+  try {
+    if (user) {
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+    } else {
+      localStorage.removeItem(USER_KEY);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+export function clearCachedUser() {
+  try {
+    localStorage.removeItem(USER_KEY);
+  } catch {
+    // ignore
+  }
 }
 
 const api = axios.create({
@@ -38,19 +91,27 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  if (UNSAFE_METHODS.has((config.method || "get").toLowerCase())) {
-    const csrf = readCsrfToken();
-    if (csrf) config.headers[CSRF_HEADER] = csrf;
+  const token = getAccessToken();
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
 let refreshInFlight = null;
 
-/** Rotate the token cookies. Concurrent callers share one request. */
+/** Rotate the token using refresh cookie. */
 export function refreshSession() {
   refreshInFlight ??= api
     .post("/auth/login/refresh/")
+    .then((response) => {
+      const token = response?.data?.access;
+      if (token) {
+        setAccessToken(token);
+      }
+      return response;
+    })
     .finally(() => {
       refreshInFlight = null;
     });
@@ -65,7 +126,11 @@ api.interceptors.response.use(
       original?.url?.startsWith(path),
     );
 
-    if (error.response?.status !== 401 || isAuthEndpoint || original?._retried) {
+    if (
+      error.response?.status !== 401 ||
+      isAuthEndpoint ||
+      original?._retried
+    ) {
       throw error;
     }
 
@@ -75,6 +140,8 @@ api.interceptors.response.use(
       await refreshSession();
       return await api(original);
     } catch (refreshError) {
+      clearAccessToken();
+      clearHasSession();
       window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
       throw refreshError;
     }
